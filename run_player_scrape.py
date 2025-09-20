@@ -71,7 +71,8 @@ def get_gspread_client_from_env():
 # Sheets helpers
 # -----------------------------
 NEW_HEADERS = [
-    'Player', 'Date', 'Cumulative Points', 'Team', 'Team Icon', 'Goals', 'Assists', 'Total Points'
+    'Player', 'Date', 'Cumulative Points', 'Cumulative Goals', 'Cumulative Assists',
+    'Team', 'Team Icon', 'Goals', 'Assists', 'Total Points'
 ]
 
 def get_or_create_worksheet(gc, doc_name, worksheet_name, headers):
@@ -85,7 +86,7 @@ def get_or_create_worksheet(gc, doc_name, worksheet_name, headers):
     try:
         ws = sh.worksheet(worksheet_name)
     except gspread.WorksheetNotFound:
-        ws = sh.add_worksheet(title=worksheet_name, rows=1000, cols=12)
+        ws = sh.add_worksheet(title=worksheet_name, rows=1000, cols=16)
         ws.append_row(headers)
         return ws
 
@@ -102,32 +103,60 @@ def header_index_map(ws):
     hdr = ws.row_values(1)
     return {name.strip(): idx for idx, name in enumerate(hdr)}
 
-def build_existing_cumulative(ws):
-    idx = header_index_map(ws)
-    player_col = idx.get('Player', 0)                   # Player is col 1
-    cumulative_col = idx.get('Cumulative Points', 2)    # Cum. Points is col 3
+def safe_int(text):
+    text = (text or "").strip()
+    return int(text) if text.isdigit() else 0
 
-    cumu = defaultdict(int)
+def build_existing_cumulative(ws):
+    """
+    Reconstruct cumulative totals from existing rows while de-duping by (Player, Date, Team).
+    This makes reruns idempotent if previous rows are duplicated.
+    """
+    idx = header_index_map(ws)
+    col_player   = idx.get('Player', 0)
+    col_date     = idx.get('Date', 1)
+    col_team     = idx.get('Team', 5)  # default arbitrary if missing
+    col_goals    = idx.get('Goals', 7)
+    col_assists  = idx.get('Assists', 8)
+    col_points   = idx.get('Total Points', 9)
+
+    totals = defaultdict(lambda: {"points": 0, "goals": 0, "assists": 0})
+    seen = set()
+
     try:
         data = ws.get_all_values()
     except Exception as e:
         print(f"Warning reading sheet: {e}")
-        return cumu
+        return totals
 
     if not data or len(data) <= 1:
-        return cumu
+        return totals
 
     for row in data[1:]:
-        if len(row) <= max(player_col, cumulative_col):
+        # Guard on indexes present in the row
+        max_needed = max(col_player, col_date, col_team, col_goals, col_assists, col_points)
+        if len(row) <= max_needed:
             continue
-        player = row[player_col].strip()
-        try:
-            cp = int(row[cumulative_col])
-        except ValueError:
-            cp = 0
-        if cp > cumu[player]:
-            cumu[player] = cp
-    return cumu
+
+        player = row[col_player].strip()
+        date   = row[col_date].strip() if row[col_date] else ""
+        team   = row[col_team].strip() if row[col_team] else ""
+
+        # De-dupe key
+        key = (player, date, team)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        g = safe_int(row[col_goals]) if len(row) > col_goals else 0
+        a = safe_int(row[col_assists]) if len(row) > col_assists else 0
+        tp = safe_int(row[col_points]) if len(row) > col_points else (g + a)
+
+        totals[player]["goals"]   += g
+        totals[player]["assists"] += a
+        totals[player]["points"]  += tp
+
+    return totals
 
 def append_rows(ws, rows):
     if not rows:
@@ -139,10 +168,6 @@ def append_rows(ws, rows):
 # -----------------------------
 def is_valid_player_name(name):
     return bool(name and not name.isdigit() and re.search(r"[a-zA-Z]", name))
-
-def safe_int(text):
-    text = (text or "").strip()
-    return int(text) if text.isdigit() else 0
 
 def extract_event_date(soup: BeautifulSoup):
     th_date = soup.find('th', string=lambda x: x and x.strip().lower() == "date")
@@ -172,6 +197,14 @@ def extract_team_icons_from_page(soup: BeautifulSoup):
     return mapping
 
 def parse_event(event_number):
+    """
+    Parse:
+      - date from Details table
+      - each team block in Performance section:
+          team name from h4.sp-table-caption
+          icon from logos section (fallback to TEAM_LOGOS)
+          player rows from tbody tr.lineup
+    """
     url = f"{BASE_URL}{event_number}/"
     try:
         resp = requests.get(url, timeout=20)
@@ -214,8 +247,8 @@ def parse_event(event_number):
             name = tds[1].get_text(strip=True)
             if not is_valid_player_name(name) or name == "Total":
                 continue
-            goals = safe_int(tds[3].get_text())
-            assists = safe_int(tds[4].get_text())
+            goals = int(tds[3].get_text(strip=True) or 0) if tds[3].get_text(strip=True).isdigit() else 0
+            assists = int(tds[4].get_text(strip=True) or 0) if tds[4].get_text(strip=True).isdigit() else 0
             total_points = goals + assists
 
             player_stats.append({
@@ -235,7 +268,9 @@ def parse_event(event_number):
 def main():
     gc = get_gspread_client_from_env()
     ws = get_or_create_worksheet(gc, DOC_NAME, WORKSHEET_NAME, NEW_HEADERS)
-    cumulative_points = build_existing_cumulative(ws)
+
+    # Build cumulative totals from existing sheet (de-duped)
+    cumulative = build_existing_cumulative(ws)  # {player: {"points": x, "goals": y, "assists": z}}
 
     pending = []
     processed_events = 0
@@ -244,25 +279,30 @@ def main():
         date_str, players = parse_event(ev)
         if date_str and players:
             for p in players:
-                name = p['name']
-                goals = p['goals']
+                name    = p['name']
+                goals   = p['goals']
                 assists = p['assists']
-                total_points = p['total_points']
+                points  = p['total_points']
 
-                # update cumulative first (so we can write it in col 3)
-                cumulative_points[name] += total_points
-                cum_val = cumulative_points[name]
+                # increment cumulatives
+                cumulative[name]["goals"]   += goals
+                cumulative[name]["assists"] += assists
+                cumulative[name]["points"]  += points
 
-                # ORDER: Player, Date, Cumulative Points, Team, Team Icon, Goals, Assists, Total Points
+                # ORDER:
+                # Player, Date, Cumulative Points, Cumulative Goals, Cumulative Assists,
+                # Team, Team Icon, Goals, Assists, Total Points
                 pending.append([
                     name,
                     date_str,
-                    cum_val,
+                    cumulative[name]["points"],
+                    cumulative[name]["goals"],
+                    cumulative[name]["assists"],
                     p['team'],
                     p['team_icon'],
                     goals,
                     assists,
-                    total_points,
+                    points,
                 ])
 
         processed_events += 1
@@ -274,7 +314,7 @@ def main():
             time.sleep(REQUEST_SLEEP)
 
     append_rows(ws, pending)
-    print("Done: Player stats (Cumulative Points in col 3) have been written to Google Sheets.")
+    print("Done: Player stats with cumulative goals/assists have been written to Google Sheets.")
 
 if __name__ == "__main__":
     main()
