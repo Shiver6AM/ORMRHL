@@ -104,8 +104,8 @@ def header_index_map(ws):
 
 def build_existing_cumulative(ws):
     idx = header_index_map(ws)
-    player_col = idx.get('Player', 1)
-    cumulative_col = idx.get('Cumulative Points', 7)
+    player_col = idx.get('Player', 0)                # <-- default to first column now
+    cumulative_col = idx.get('Cumulative Points', 7) # last column in NEW_HEADERS
 
     cumu = defaultdict(int)
     try:
@@ -161,20 +161,8 @@ def extract_event_date(soup: BeautifulSoup):
     return raw
 
 def extract_team_icons_from_page(soup: BeautifulSoup):
-    """
-    From the 'logos' section:
-      <span class="sp-team-logo">
-         <strong class="sp-team-name">Eagles</strong> <img src=...>
-      </span>
-      ...
-      <span class="sp-team-logo">
-         <img src=...> <strong class="sp-team-name">Kings</strong>
-      </span>
-    Build {team_name -> img_src} for both.
-    """
     mapping = {}
     for span in soup.select(".sp-section-content-logos .sp-team-logo"):
-        # one or two names may be present; map each seen name to the img in this span
         img = span.find("img")
         src = (img.get("src", "").strip() if img else "")
         for strong in span.select(".sp-team-name"):
@@ -184,14 +172,6 @@ def extract_team_icons_from_page(soup: BeautifulSoup):
     return mapping
 
 def parse_event(event_number):
-    """
-    Robust parse:
-    - read date from Details table
-    - for each team block in Performance section:
-        * team name from h4.sp-table-caption
-        * icon from logos section (fallback to TEAM_LOGOS)
-        * read player rows from tbody tr.lineup
-    """
     url = f"{BASE_URL}{event_number}/"
     try:
         resp = requests.get(url, timeout=20)
@@ -206,17 +186,12 @@ def parse_event(event_number):
     soup = BeautifulSoup(resp.content, "html.parser")
 
     date_str = extract_event_date(soup)
-
-    # Build icon map from page, fallback to provided dict if not found
     page_icon_map = extract_team_icons_from_page(soup)
 
     player_stats = []
 
-    # Each team has its own performance block with a caption (team name)
-    # Selector finds both of the team tables
     performance_blocks = soup.select(".sp-section-content-performance .sp-template.sp-template-event-performance")
     if not performance_blocks:
-        # Some themes wrap differently — try a slightly looser selector
         performance_blocks = soup.select(".sp-event-performance-tables .sp-template-event-performance")
 
     for block in performance_blocks:
@@ -276,9 +251,10 @@ def main():
 
                 cumulative_points[name] += total_points
 
+                # ORDER: Player, Date, Team, Team Icon, Goals, Assists, Total Points, Cumulative Points
                 pending.append([
-                    date_str,
                     name,
+                    date_str,
                     p['team'],
                     p['team_icon'],
                     goals,
@@ -296,7 +272,7 @@ def main():
             time.sleep(REQUEST_SLEEP)
 
     append_rows(ws, pending)
-    print("Done: Player stats (with Team & Icon) have been written to Google Sheets.")
+    print("Done: Player stats (Player in col 1, Date in col 2) have been written to Google Sheets.")
 
 if __name__ == "__main__":
     main()
