@@ -71,7 +71,7 @@ def get_gspread_client_from_env():
 # Sheets helpers
 # -----------------------------
 NEW_HEADERS = [
-    'Player', 'Date', 'Team', 'Team Icon', 'Goals', 'Assists', 'Total Points', 'Cumulative Points'
+    'Player', 'Date', 'Cumulative Points', 'Team', 'Team Icon', 'Goals', 'Assists', 'Total Points'
 ]
 
 def get_or_create_worksheet(gc, doc_name, worksheet_name, headers):
@@ -104,8 +104,8 @@ def header_index_map(ws):
 
 def build_existing_cumulative(ws):
     idx = header_index_map(ws)
-    player_col = idx.get('Player', 0)                # <-- default to first column now
-    cumulative_col = idx.get('Cumulative Points', 7) # last column in NEW_HEADERS
+    player_col = idx.get('Player', 0)                   # Player is col 1
+    cumulative_col = idx.get('Cumulative Points', 2)    # Cum. Points is col 3
 
     cumu = defaultdict(int)
     try:
@@ -249,18 +249,20 @@ def main():
                 assists = p['assists']
                 total_points = p['total_points']
 
+                # update cumulative first (so we can write it in col 3)
                 cumulative_points[name] += total_points
+                cum_val = cumulative_points[name]
 
-                # ORDER: Player, Date, Team, Team Icon, Goals, Assists, Total Points, Cumulative Points
+                # ORDER: Player, Date, Cumulative Points, Team, Team Icon, Goals, Assists, Total Points
                 pending.append([
                     name,
                     date_str,
+                    cum_val,
                     p['team'],
                     p['team_icon'],
                     goals,
                     assists,
                     total_points,
-                    cumulative_points[name],
                 ])
 
         processed_events += 1
@@ -272,7 +274,7 @@ def main():
             time.sleep(REQUEST_SLEEP)
 
     append_rows(ws, pending)
-    print("Done: Player stats (Player in col 1, Date in col 2) have been written to Google Sheets.")
+    print("Done: Player stats (Cumulative Points in col 3) have been written to Google Sheets.")
 
 if __name__ == "__main__":
     main()
