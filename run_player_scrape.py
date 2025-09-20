@@ -71,7 +71,7 @@ def get_gspread_client_from_env():
 # Sheets helpers
 # -----------------------------
 NEW_HEADERS = [
-    'Date', 'Player', 'Team', 'Team Icon', 'Goals', 'Assists', 'Total Points', 'Cumulative Points'
+    'Player', 'Date', 'Team', 'Team Icon', 'Goals', 'Assists', 'Total Points', 'Cumulative Points'
 ]
 
 def get_or_create_worksheet(gc, doc_name, worksheet_name, headers):
