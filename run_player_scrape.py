@@ -16,7 +16,7 @@ from google.oauth2.service_account import Credentials
 # -----------------------------
 BASE_URL = "https://ormrhl.com/event/"
 
-DOC_NAME = os.getenv("GOOGLE_SHEETS_DOC_NAME", "ORMRHL Player Stats 2026")
+DOC_NAME = os.getenv("GOOGLE_SHEETS_DOC_NAME", "ORMRHL 2026 Regular Season Player Stats")
 WORKSHEET_NAME = os.getenv("WORKSHEET_NAME", "Player Stats")
 
 # Event range (end exclusive)
