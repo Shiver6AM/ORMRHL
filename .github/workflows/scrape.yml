@@ -1,41 +1,75 @@
-name: Daily ORMRHL Scrape
+icon to edit → replace contents → commit) — it's a single file, probably faster than round-tripping the token.
+Here's the file if you want to paste it directly:
+
+Ran a command
+bash
+
+cat /home/claude/ormrhl-scraper/.github/workflows/scrape.yml
+Output
+
+name: Scrape ORMRHL data
 
 on:
   schedule:
-    - cron: "15 11 * * *"   # 11:15 UTC daily (~07:15 Toronto during EDT)
-  workflow_dispatch:        # allow manual runs
+    # Kept from the previous workflow's timing: 11:15 UTC (~07:15 Toronto during EDT).
+    - cron: "15 11 * * *"
+  workflow_dispatch:
+    inputs:
+      season_key:
+        description: "Override season, e.g. 2026-2027 (leave blank to auto-detect)"
+        required: false
+        default: ""
+      incremental_player_stats:
+        description: "Skip games already scraped (faster, but misses post-game stat corrections — not recommended for the scheduled run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
+    # Google Sheets push (scripts/common.py::get_sheets_client) is optional and only
+    # runs if GCP_SA_KEY_JSON is set — reusing the same secret + doc-name variable the
+    # previous run_player_scrape.py workflow already had configured. It's inert if
+    # either isn't set. The actually-automatic *public* chart is docs/*.html via GitHub
+    # Pages, published from the exports/*.csv this job produces, since our Flourish
+    # plan is free (no Live CSV / live Sheets linking available).
+    env:
+      GCP_SA_KEY_JSON: ${{ secrets.GCP_SA_KEY_JSON }}
+      GOOGLE_SHEETS_DOC_NAME: ${{ vars.GOOGLE_SHEETS_DOC_NAME }}
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Run scraper
-        env:
-          # Secrets (encrypted)
-          GCP_SA_KEY_JSON: ${{ secrets.GCP_SA_KEY_JSON }}
-          # Variables (easy to tweak)
-          GOOGLE_SHEETS_DOC_NAME: ${{ vars.GOOGLE_SHEETS_DOC_NAME }}
-          WORKSHEET_NAME: ${{ vars.WORKSHEET_NAME }}
-          EVENT_START: ${{ vars.EVENT_START }}
-          EVENT_END: ${{ vars.EVENT_END }}
-          # Optional tuning
-          REQUEST_SLEEP: "0.4"
+      - name: Scrape games + standings history
         run: |
-          python run_player_scrape.py
+          python scripts/scrape_games.py ${{ github.event.inputs.season_key != '' && format('--season-key {0}', github.event.inputs.season_key) || '' }}
+
+      - name: Scrape player game-by-game stats
+        run: |
+          python scripts/scrape_player_stats.py \
+            ${{ github.event.inputs.season_key != '' && format('--season-key {0}', github.event.inputs.season_key) || '' }} \
+            ${{ github.event.inputs.incremental_player_stats == 'true' && '--incremental' || '' }}
+
+      - name: Publish exports to the GitHub Pages site
+        run: |
+          mkdir -p docs/data
+          cp exports/*.csv docs/data/
+
+      - name: Commit updated data + exports + pages data
+        run: |
+          git config user.name "ormrhl-scraper-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/ormrhl.db exports/*.csv docs/data/*.csv
+          git diff --cached --quiet && echo "No changes to commit" || git commit -m "Update scraped data ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+          git push
