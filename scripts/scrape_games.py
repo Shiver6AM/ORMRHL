@@ -288,8 +288,14 @@ def push_standings_to_sheets(snaps):
         return
     header = list(snaps[0].keys())
     rows = [[s[k] for k in header] for s in snaps]
-    overwrite_worksheet(gc, sheets_doc_name(), "Standings History", header, rows)
-    print(f"Pushed {len(rows)} rows to Google Sheet '{sheets_doc_name()}' / tab 'Standings History'")
+    try:
+        overwrite_worksheet(gc, sheets_doc_name(), "Standings History", header, rows)
+        print(f"Pushed {len(rows)} rows to Google Sheet '{sheets_doc_name()}' / tab 'Standings History'")
+    except Exception as e:
+        # Sheets sync is a bonus feature, not the source of truth (SQLite is) --
+        # a failure here (e.g. hitting Google's per-workbook cell limit) should
+        # never take down the actual scrape/commit pipeline.
+        print(f"WARNING: Sheets push failed, continuing anyway: {e}")
 
 
 def main():

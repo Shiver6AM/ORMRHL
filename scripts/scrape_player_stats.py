@@ -372,8 +372,11 @@ def push_scoring_race_to_sheets(out_rows):
         return
     header = list(out_rows[0].keys())
     rows = [[r[k] for k in header] for r in out_rows]
-    overwrite_worksheet(gc, sheets_doc_name(), "Scoring Race", header, rows)
-    print(f"Pushed {len(rows)} rows to Google Sheet '{sheets_doc_name()}' / tab 'Scoring Race'")
+    try:
+        overwrite_worksheet(gc, sheets_doc_name(), "Scoring Race", header, rows)
+        print(f"Pushed {len(rows)} rows to Google Sheet '{sheets_doc_name()}' / tab 'Scoring Race'")
+    except Exception as e:
+        print(f"WARNING: Sheets push failed, continuing anyway: {e}")
 
 
 def main():
