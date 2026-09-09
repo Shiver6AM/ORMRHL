@@ -168,10 +168,14 @@ def upsert_games(conn, games):
     return added, updated
 
 
-def rebuild_standings_snapshots_for(conn, season_label: str, season_key: str, season_type: str):
+def rebuild_standings_snapshots_for(conn, season_key: str, season_type: str, game_rows: list):
     """
-    Recomputes the full standings-by-date history for ONE (season_label)
-    group from scratch. Points: Win=2, Tie=1, Loss=0.
+    Recomputes the full standings-by-date history for ONE (season_key,
+    season_type) group from scratch, from the already-fetched game_rows for
+    that group (which may span several raw season_label variants -- e.g.
+    "Playoffs 2023", "Playoffs Round 2 2023", "A Finals 2023" all fold into
+    one combined playoffs standings computation for season_key 2022-2023).
+    Points: Win=2, Tie=1, Loss=0.
 
     Note: this same simple formula is applied to playoffs too, for lack of
     a documented alternative -- the site's own playoff standings table
@@ -180,23 +184,13 @@ def rebuild_standings_snapshots_for(conn, season_label: str, season_key: str, se
     standings from this script as "game record over the playoffs," not
     necessarily identical to the league's own playoff standings table.
     """
-    rows = conn.execute(
-        """
-        SELECT game_date, team1, team2, score1, score2
-        FROM games
-        WHERE season_label = ?
-        ORDER BY game_date ASC, event_id ASC
-        """,
-        (season_label,),
-    ).fetchall()
-
-    conn.execute("DELETE FROM standings_snapshots WHERE season_label = ?", (season_label,))
+    display_label = f"Regular Season {season_key}" if season_type == "regular" else f"Playoffs {season_key}"
 
     totals = defaultdict(lambda: {"gp": 0, "w": 0, "l": 0, "t": 0, "gf": 0, "ga": 0})
     snapshot_rows = []
 
     games_by_date = defaultdict(list)
-    for r in rows:
+    for r in game_rows:
         games_by_date[r["game_date"]].append(r)
     dates_in_order = sorted(games_by_date.keys())
 
@@ -223,7 +217,7 @@ def rebuild_standings_snapshots_for(conn, season_label: str, season_key: str, se
             pts = stats["w"] * 2 + stats["t"] * 1
             snapshot_rows.append(
                 {
-                    "season_label": season_label,
+                    "season_label": display_label,
                     "season_key": season_key,
                     "season_type": season_type,
                     "as_of_date": d,
@@ -251,19 +245,60 @@ def rebuild_standings_snapshots_for(conn, season_label: str, season_key: str, se
         """,
         snapshot_rows,
     )
-    conn.commit()
     return len(snapshot_rows)
 
 
 def rebuild_all_standings_snapshots(conn):
-    """Rebuilds standings snapshots for every distinct season_label present in `games`."""
-    season_rows = conn.execute(
-        "SELECT DISTINCT season_label, season_key, season_type FROM games ORDER BY season_key, season_type"
+    """
+    Rebuilds standings snapshots for every distinct (season_key, season_type)
+    combination present in `games` -- combining every raw season_label
+    variant that maps to the same group (see season_type_and_key's
+    docstring for why that matters: several playoff-round label spellings
+    all fold into one combined playoffs group per season).
+
+    standings_snapshots is fully derived from `games` and rebuilt from
+    scratch every run, so it's safe to drop and recreate it outright here --
+    that also sidesteps ever needing an ALTER-TABLE-style primary key
+    migration for this specific table as the grouping key has evolved.
+    """
+    conn.execute("DROP TABLE IF EXISTS standings_snapshots")
+    conn.execute(
+        """
+        CREATE TABLE standings_snapshots (
+            season_label    TEXT NOT NULL,
+            season_key      TEXT NOT NULL,
+            season_type     TEXT NOT NULL,
+            as_of_date      TEXT NOT NULL,
+            team            TEXT NOT NULL,
+            team_icon       TEXT,
+            team_color      TEXT,
+            gp              INTEGER NOT NULL,
+            w               INTEGER NOT NULL,
+            l               INTEGER NOT NULL,
+            t               INTEGER NOT NULL,
+            pts             INTEGER NOT NULL,
+            gf              INTEGER NOT NULL,
+            ga              INTEGER NOT NULL,
+            diff            INTEGER NOT NULL,
+            PRIMARY KEY (season_key, season_type, as_of_date, team)
+        )
+        """
+    )
+
+    rows = conn.execute(
+        "SELECT season_key, season_type, game_date, team1, team2, score1, score2 FROM games "
+        "WHERE season_key IS NOT NULL ORDER BY season_key, season_type, game_date ASC, event_id ASC"
     ).fetchall()
+
+    groups = defaultdict(list)
+    for r in rows:
+        groups[(r["season_key"], r["season_type"])].append(r)
+
     total = 0
-    for r in season_rows:
-        total += rebuild_standings_snapshots_for(conn, r["season_label"], r["season_key"], r["season_type"])
-    return total, len(season_rows)
+    for (season_key, season_type), game_rows in groups.items():
+        total += rebuild_standings_snapshots_for(conn, season_key, season_type, game_rows)
+    conn.commit()
+    return total, len(groups)
 
 
 def export_csvs(conn):

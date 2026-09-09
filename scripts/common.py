@@ -89,7 +89,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             gf              INTEGER NOT NULL,
             ga              INTEGER NOT NULL,
             diff            INTEGER NOT NULL,
-            PRIMARY KEY (season_label, as_of_date, team)
+            PRIMARY KEY (season_key, season_type, as_of_date, team)
         );
 
         CREATE TABLE IF NOT EXISTS player_game_stats (
@@ -160,26 +160,39 @@ def current_season_window(today: date | None = None) -> dict:
     }
 
 
+_SEASON_YEAR_RE = re.compile(r"(\d{4})")
+
+
 def season_type_and_key(season_label: str):
     """
     Parses the site's raw season label into a (season_type, season_key) pair
     so games/standings/player-stats from any season -- and both regular
-    season and playoffs -- can be told apart and grouped correctly:
-      "Regular Season 2025-2026" -> ("regular", "2025-2026")
-      "Playoffs 2026"            -> ("playoffs", "2025-2026")  (playoffs are
-                                     labeled by the END year of the season)
-    Falls back to ("other", season_label) for anything unrecognized, rather
-    than raising, so an unexpected label never crashes a scrape run.
+    season and playoffs -- can be told apart and grouped correctly.
+
+    Regular season labels are consistent: "Regular Season 2025-2026" ->
+    ("regular", "2025-2026").
+
+    Playoff labels are NOT consistent -- the site uses at least "Playoffs
+    2026", "Playoffs Round 2 2023", and "A Finals 2023" / "B Finals 2023"
+    (division finals) for what are all really "the playoffs that concluded
+    in that year." Rather than enumerate every round-naming variant, treat
+    anything that isn't "Regular Season ..." as playoffs and pull the
+    4-digit year out of it (the site always ends these labels with the
+    concluding year), so every round/division label for the same season
+    folds into one combined ("playoffs", "<season_key>") group:
+      "Playoffs 2026"            -> ("playoffs", "2025-2026")
+      "Playoffs Round 2 2023"    -> ("playoffs", "2022-2023")
+      "A Finals 2023"            -> ("playoffs", "2022-2023")
+
+    Falls back to ("other", season_label) only if no 4-digit year is found
+    at all, so a genuinely unrecognized label never crashes a scrape run.
     """
     if season_label.startswith("Regular Season "):
         return "regular", season_label[len("Regular Season "):].strip()
-    if season_label.startswith("Playoffs "):
-        year_text = season_label[len("Playoffs "):].strip()
-        try:
-            end_year = int(year_text)
-            return "playoffs", f"{end_year - 1}-{end_year}"
-        except ValueError:
-            return "playoffs", year_text
+    m = _SEASON_YEAR_RE.search(season_label)
+    if m:
+        end_year = int(m.group(1))
+        return "playoffs", f"{end_year - 1}-{end_year}"
     return "other", season_label
 
 
