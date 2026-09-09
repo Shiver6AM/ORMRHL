@@ -1,23 +1,31 @@
 """
 scrape_player_stats.py
 
-By default, re-scrapes box scores for EVERY game in the season (not just
-new ones) each run, since scorekeepers can correct stats after the fact —
-this is a small rec league (a couple hundred games/season), so a full daily
-refresh is cheap and keeps corrections flowing through automatically. Pass
---incremental for a faster run that only fetches games not seen before
-(useful for quick manual checks, not recommended for the scheduled job).
+By default, re-scrapes box scores for EVERY game in the CURRENT season
+(not just new ones) each run, since scorekeepers can correct stats after
+the fact. Scoped to the current season by default to keep the daily job
+fast and polite to the site -- fetching a box score is one HTTP request
+per game, so re-fetching all of league history every day would be wasteful.
 
-Also builds a cumulative "scoring race over time" export for charting.
+Pass --all-seasons once (e.g. for an initial historical backfill) to scrape
+every season the `games` table knows about; after that, the exports always
+include every season ever scraped regardless of what a given run touched,
+since export_scoring_race_csv reads the whole player_game_stats table.
+
+Pass --incremental for a faster run that only fetches games not seen before
+within the selected scope (useful for quick manual checks, not recommended
+for the scheduled job, since it misses corrections).
 
 Usage:
-    python scripts/scrape_player_stats.py                  # full refresh (default)
-    python scripts/scrape_player_stats.py --incremental     # only new games
-    python scripts/scrape_player_stats.py --season-key 2026-2027
+    python scripts/scrape_player_stats.py                  # current season, full refresh
+    python scripts/scrape_player_stats.py --incremental     # current season, new games only
+    python scripts/scrape_player_stats.py --season-key 2025-2026   # a specific season
+    python scripts/scrape_player_stats.py --all-seasons     # every season (for backfill)
 """
 
 import argparse
 import csv
+from collections import defaultdict
 from datetime import datetime, timezone
 
 from common import (
@@ -70,7 +78,7 @@ def extract_team_icons_from_page(soup):
     return mapping
 
 
-def parse_sportspress_table(table, team_name, icon_url, event_id, season_label, game_date):
+def parse_sportspress_table(table, team_name, icon_url, event_id, season_label, season_key, season_type, game_date):
     rows_out = []
     tbody = table.find("tbody")
     rows = tbody.find_all("tr", class_="lineup") if tbody else []
@@ -97,6 +105,8 @@ def parse_sportspress_table(table, team_name, icon_url, event_id, season_label, 
         rows_out.append({
             "event_id": event_id,
             "season_label": season_label,
+            "season_key": season_key,
+            "season_type": season_type,
             "game_date": game_date,
             "team": team_name or "Unknown",
             "team_icon": icon_url or team_icon(team_name or ""),
@@ -144,7 +154,7 @@ def col_index(headers, *candidates):
     return None
 
 
-def parse_generic_table(team_name, headers, table, event_id, season_label, game_date):
+def parse_generic_table(team_name, headers, table, event_id, season_label, season_key, season_type, game_date):
     idx_player = col_index(headers, "player")
     idx_pos = col_index(headers, "position")
     idx_g = col_index(headers, "g")
@@ -179,6 +189,8 @@ def parse_generic_table(team_name, headers, table, event_id, season_label, game_
         rows_out.append({
             "event_id": event_id,
             "season_label": season_label,
+            "season_key": season_key,
+            "season_type": season_type,
             "game_date": game_date,
             "team": team_name or "Unknown",
             "team_icon": team_icon(team_name or ""),
@@ -195,7 +207,7 @@ def parse_generic_table(team_name, headers, table, event_id, season_label, game_
     return rows_out
 
 
-def scrape_event_player_stats(event_id: str, season_label: str, game_date: str):
+def scrape_event_player_stats(event_id: str, season_label: str, season_key: str, season_type: str, game_date: str):
     url = EVENT_URL_TMPL.format(event_id=event_id)
     soup = get_soup(url)
 
@@ -206,7 +218,7 @@ def scrape_event_player_stats(event_id: str, season_label: str, game_date: str):
         for team_name, table in sportspress_rosters:
             icon_url = icon_map.get(team_name) or team_icon(team_name or "")
             stats_rows.extend(
-                parse_sportspress_table(table, team_name, icon_url, event_id, season_label, game_date)
+                parse_sportspress_table(table, team_name, icon_url, event_id, season_label, season_key, season_type, game_date)
             )
         return stats_rows
 
@@ -214,34 +226,37 @@ def scrape_event_player_stats(event_id: str, season_label: str, game_date: str):
     generic_rosters = find_roster_tables_generic(soup)
     stats_rows = []
     for team_name, headers, table in generic_rosters:
-        stats_rows.extend(parse_generic_table(team_name, headers, table, event_id, season_label, game_date))
+        stats_rows.extend(parse_generic_table(team_name, headers, table, event_id, season_label, season_key, season_type, game_date))
     return stats_rows
 
 
-def games_needing_stats(conn, season_key: str, incremental: bool):
+def games_needing_stats(conn, season_key: str | None, incremental: bool, all_seasons: bool):
     """
-    By default (incremental=False) returns every game for the season, so a
-    full re-scrape happens daily and picks up any post-game stat corrections.
-    Pass incremental=True to only return games with no stats recorded yet
-    (faster, but will miss corrections to already-scraped games).
-    """
-    window = current_season_window()
-    if season_key != window["season_key"]:
-        start_year, end_year = (int(x) for x in season_key.split("-"))
-        regular_label = f"Regular Season {start_year}-{end_year}"
-        playoffs_fragment = f"Playoffs {end_year}"
-    else:
-        regular_label = window["regular_season_label"]
-        playoffs_fragment = window["playoffs_label_fragment"]
+    Scope:
+      - all_seasons=True: every game in the `games` table, any season/type.
+      - season_key given: just that season (regular + its playoffs).
+      - neither: the current season (regular + its playoffs) -- the default
+        daily-job scope, to keep the run fast.
 
-    games = conn.execute(
-        """
-        SELECT event_id, season_label, game_date FROM games
-        WHERE season_label = ? OR season_label LIKE ?
-        ORDER BY game_date ASC, event_id ASC
-        """,
-        (regular_label, f"%{playoffs_fragment}%"),
-    ).fetchall()
+    Within that scope, incremental=False (default) returns every matching
+    game so a full re-scrape happens and picks up stat corrections;
+    incremental=True returns only games with no stats recorded yet.
+    """
+    if all_seasons:
+        games = conn.execute(
+            "SELECT event_id, season_label, season_key, season_type, game_date FROM games "
+            "ORDER BY game_date ASC, event_id ASC"
+        ).fetchall()
+    else:
+        key = season_key or current_season_window()["season_key"]
+        games = conn.execute(
+            """
+            SELECT event_id, season_label, season_key, season_type, game_date FROM games
+            WHERE season_key = ?
+            ORDER BY game_date ASC, event_id ASC
+            """,
+            (key,),
+        ).fetchall()
 
     if not incremental:
         return games
@@ -259,10 +274,10 @@ def upsert_stats(conn, rows):
         conn.execute(
             """
             INSERT INTO player_game_stats
-                (event_id, season_label, game_date, team, team_icon, team_color, player_name, player_slug,
-                 position, goals, assists, points, minor_pen, major_pen)
-            VALUES (:event_id, :season_label, :game_date, :team, :team_icon, :team_color, :player_name, :player_slug,
-                    :position, :goals, :assists, :points, :minor_pen, :major_pen)
+                (event_id, season_label, season_key, season_type, game_date, team, team_icon, team_color,
+                 player_name, player_slug, position, goals, assists, points, minor_pen, major_pen)
+            VALUES (:event_id, :season_label, :season_key, :season_type, :game_date, :team, :team_icon, :team_color,
+                    :player_name, :player_slug, :position, :goals, :assists, :points, :minor_pen, :major_pen)
             ON CONFLICT(event_id, player_slug) DO UPDATE SET
                 team=excluded.team,
                 team_icon=excluded.team_icon,
@@ -284,76 +299,77 @@ def upsert_stats(conn, rows):
 def export_player_game_stats_csv(conn):
     EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
     rows = conn.execute(
-        "SELECT * FROM player_game_stats ORDER BY game_date, event_id, team, player_name"
+        "SELECT * FROM player_game_stats ORDER BY season_key, season_type, game_date, event_id, team, player_name"
     ).fetchall()
     with open(EXPORTS_DIR / "player_game_stats.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(rows[0].keys() if rows else
-                         ["event_id", "season_label", "game_date", "team", "team_icon", "team_color", "player_name",
-                          "player_slug", "position", "goals", "assists", "points",
-                          "minor_pen", "major_pen"])
+                         ["event_id", "season_label", "season_key", "season_type", "game_date", "team",
+                          "team_icon", "team_color", "player_name", "player_slug", "position",
+                          "goals", "assists", "points", "minor_pen", "major_pen"])
         for r in rows:
             writer.writerow([r[k] for k in r.keys()])
 
 
-def export_scoring_race_csv(conn, season_key: str):
+def export_scoring_race_csv(conn):
     """
-    Long-format cumulative points per player per game-date, for EVERY player
-    who has recorded a stat this season (no top-N cap here — the chart UI
-    does its own configurable top-N + pagination client-side, so it needs
-    the full pool to page through).
+    Long-format cumulative points per player per game-date, computed
+    independently for EVERY (season_key, season_type) group found in
+    player_game_stats -- covering every season/type ever scraped, not just
+    whatever this particular run touched. Cumulative totals reset at the
+    start of each group, so a player's playoff points never bleed into
+    their regular-season total, and one season never carries into the next.
+
+    No top-N cap here — the chart UI does its own configurable top-N +
+    pagination client-side, filtered to whichever season/type the person
+    has selected, so it needs the full pool for every group to page through.
 
     Each row's `team`/`team_icon`/`team_color` reflect that player's most
-    recent team as of that date — so a mid-season trade shows the old team
-    on rows before the trade and the new team from the trade date onward,
-    rather than being frozen at whichever team they started the season on.
+    recent team as of that date within that group — so a mid-season trade
+    shows the old team on rows before the trade and the new team from the
+    trade date onward.
     """
-    window = current_season_window()
-    if season_key != window["season_key"]:
-        start_year, end_year = season_key.split("-")
-        regular_label = f"Regular Season {start_year}-{end_year}"
-    else:
-        regular_label = window["regular_season_label"]
-
     rows = conn.execute(
         """
-        SELECT game_date, player_name, player_slug, team, team_icon, team_color, goals, assists, points
+        SELECT season_key, season_type, game_date, player_name, player_slug,
+               team, team_icon, team_color, goals, assists, points
         FROM player_game_stats
-        WHERE season_label = ?
-        ORDER BY game_date ASC, event_id ASC
-        """,
-        (regular_label,),
+        ORDER BY season_key ASC, season_type ASC, game_date ASC, event_id ASC
+        """
     ).fetchall()
 
-    running = {}
+    running = defaultdict(lambda: {"goals": 0, "assists": 0, "points": 0, "player_name": None})
     out_rows = []
     for r in rows:
-        key = r["player_slug"]
-        if key not in running:
-            running[key] = {"goals": 0, "assists": 0, "points": 0, "player_name": r["player_name"]}
-        running[key]["goals"] += r["goals"]
-        running[key]["assists"] += r["assists"]
-        running[key]["points"] += r["points"]
+        key = (r["season_key"], r["season_type"], r["player_slug"])
+        state = running[key]
+        state["goals"] += r["goals"]
+        state["assists"] += r["assists"]
+        state["points"] += r["points"]
+        state["player_name"] = r["player_name"]
         # Always take THIS row's team/icon/color -- i.e. the player's most
-        # recent team as of this game -- rather than whatever it was set to
-        # on their first appearance. This is what makes a mid-season trade
-        # show up correctly from the trade date forward.
+        # recent team as of this game within this season/type -- rather than
+        # whatever it was set to on their first appearance. This is what
+        # makes a mid-season trade show up correctly from the trade date on.
         out_rows.append(
             {
+                "season_key": r["season_key"],
+                "season_type": r["season_type"],
                 "game_date": r["game_date"],
-                "player_name": running[key]["player_name"],
-                "player_slug": key,
+                "player_name": state["player_name"],
+                "player_slug": r["player_slug"],
                 "team": r["team"],
                 "team_icon": r["team_icon"],
                 "team_color": r["team_color"],
-                "cumulative_goals": running[key]["goals"],
-                "cumulative_assists": running[key]["assists"],
-                "cumulative_points": running[key]["points"],
+                "cumulative_goals": state["goals"],
+                "cumulative_assists": state["assists"],
+                "cumulative_points": state["points"],
             }
         )
 
     EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    fieldnames = ["game_date", "player_name", "player_slug", "team", "team_icon", "team_color",
+    fieldnames = ["season_key", "season_type", "game_date", "player_name", "player_slug",
+                  "team", "team_icon", "team_color",
                   "cumulative_goals", "cumulative_assists", "cumulative_points"]
     with open(EXPORTS_DIR / "scoring_race.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -381,27 +397,31 @@ def push_scoring_race_to_sheets(out_rows):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--season-key", default=None, help="e.g. 2026-2027")
+    parser.add_argument("--season-key", default=None,
+                         help="Scope to one season, e.g. 2025-2026. Default: current season only.")
+    parser.add_argument("--all-seasons", action="store_true",
+                         help="Scope to every season in the database (e.g. for a one-time "
+                              "historical backfill). Overrides --season-key.")
     parser.add_argument("--incremental", action="store_true",
                          help="Only scrape games with no stats yet (faster, but misses "
                               "corrections to already-scraped games). Default is a full "
-                              "re-scrape of every game, since stats can be corrected after "
-                              "the fact.")
+                              "re-scrape of every game in scope, since stats can be "
+                              "corrected after the fact.")
     args = parser.parse_args()
 
-    window = current_season_window()
-    season_key = args.season_key or window["season_key"]
-
     conn = get_db()
-    todo = games_needing_stats(conn, season_key, incremental=args.incremental)
+    todo = games_needing_stats(conn, args.season_key, incremental=args.incremental, all_seasons=args.all_seasons)
+    scope = "all seasons" if args.all_seasons else (args.season_key or f"current season ({current_season_window()['season_key']})")
     mode = "incremental (new games only)" if args.incremental else "full refresh (all games)"
-    print(f"{len(todo)} game(s) to scrape for season {season_key} [{mode}]")
+    print(f"{len(todo)} game(s) to scrape [{scope}] [{mode}]")
 
     total_rows = 0
     for i, g in enumerate(todo, start=1):
         print(f"  [{i}/{len(todo)}] event {g['event_id']} ({g['game_date']}) ...")
         try:
-            rows = scrape_event_player_stats(g["event_id"], g["season_label"], g["game_date"])
+            rows = scrape_event_player_stats(
+                g["event_id"], g["season_label"], g["season_key"], g["season_type"], g["game_date"]
+            )
         except Exception as e:
             print(f"    WARNING: failed to scrape event {g['event_id']}: {e}")
             continue
@@ -411,14 +431,14 @@ def main():
     print(f"Upserted {total_rows} player-game stat lines")
 
     export_player_game_stats_csv(conn)
-    race_rows = export_scoring_race_csv(conn, season_key)
-    print(f"Exported scoring_race.csv ({len(race_rows)} rows across all players)")
+    race_rows = export_scoring_race_csv(conn)
+    print(f"Exported scoring_race.csv ({len(race_rows)} rows across all seasons/types)")
 
     push_scoring_race_to_sheets(race_rows)
 
     conn.execute(
         "INSERT INTO scrape_log (script, run_at, rows_added, rows_updated, notes) VALUES (?, ?, ?, ?, ?)",
-        ("scrape_player_stats.py", datetime.now(timezone.utc).isoformat(), total_rows, 0, season_key),
+        ("scrape_player_stats.py", datetime.now(timezone.utc).isoformat(), total_rows, 0, scope),
     )
     conn.commit()
     conn.close()

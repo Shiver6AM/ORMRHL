@@ -1,14 +1,16 @@
 """
 scrape_games.py
 
-Scrapes /past-games/ for the current ORMRHL season, stores each game's
-result in SQLite, then rebuilds a "standings after each game date" table
-so you can chart how the standings moved over the course of the season
-(great for a Flourish bar-chart-race).
+Scrapes ALL of /past-games/ (every season the page lists, not just the
+current one) since it's a single page fetch regardless of how much history
+it contains. Stores each game's result in SQLite, then rebuilds a
+"standings after each game date" table for EVERY (season, regular/playoffs)
+combination found -- so historical seasons and playoffs are covered
+automatically, no separate backfill step needed for this script.
 
 Usage:
-    python scripts/scrape_games.py                 # auto-detect current season
-    python scripts/scrape_games.py --season-key 2026-2027
+    python scripts/scrape_games.py                 # scrape all seasons found on the page
+    python scripts/scrape_games.py --season-key 2026-2027   # restrict to just one season
 """
 
 import os
@@ -21,10 +23,10 @@ from common import (
     BASE_URL,
     get_soup,
     get_db,
-    current_season_window,
     parse_iso_prefix,
     SCORE_RE,
     event_id_from_url,
+    season_type_and_key,
     team_icon,
     team_color,
     get_sheets_client,
@@ -68,19 +70,13 @@ def split_matchup(event_text: str):
     return team1, team2
 
 
-def scrape_past_games(season_key: str):
-    """Returns a list of dicts, one per game, for the given season (regular season + playoffs)."""
-    window = current_season_window()
-    if season_key != window["season_key"]:
-        start_year, end_year = (int(x) for x in season_key.split("-"))
-        window = {
-            "start_year": start_year,
-            "end_year": end_year,
-            "regular_season_label": f"Regular Season {start_year}-{end_year}",
-            "playoffs_label_fragment": f"Playoffs {end_year}",
-            "season_key": season_key,
-        }
-
+def scrape_past_games(season_key_filter: str | None = None):
+    """
+    Returns a list of dicts, one per completed game. By default (no filter)
+    returns EVERY season found on the page; pass season_key_filter (e.g.
+    "2026-2027") to restrict to just one season's games (both regular season
+    and its playoffs).
+    """
     soup = get_soup(PAST_GAMES_URL)
     table = find_past_games_table(soup)
 
@@ -96,10 +92,8 @@ def scrape_past_games(season_key: str):
         result_cell_text = cells[2].get_text(strip=True)
         season_cell_text = cells[3].get_text(strip=True)
 
-        # Only keep games belonging to the target season (regular season or its playoffs)
-        is_regular = season_cell_text == window["regular_season_label"]
-        is_playoffs = window["playoffs_label_fragment"] in season_cell_text
-        if not (is_regular or is_playoffs):
+        season_type, season_key = season_type_and_key(season_cell_text)
+        if season_key_filter is not None and season_key != season_key_filter:
             continue
 
         score_match = SCORE_RE.match(result_cell_text)
@@ -124,6 +118,8 @@ def scrape_past_games(season_key: str):
             {
                 "event_id": event_id,
                 "season_label": season_cell_text,
+                "season_key": season_key,
+                "season_type": season_type,
                 "game_date": iso_date,
                 "game_datetime": iso_datetime,
                 "team1": team1,
@@ -134,7 +130,7 @@ def scrape_past_games(season_key: str):
             }
         )
 
-    return games, window
+    return games
 
 
 def upsert_games(conn, games):
@@ -145,12 +141,14 @@ def upsert_games(conn, games):
         exists = cur.fetchone() is not None
         conn.execute(
             """
-            INSERT INTO games (event_id, season_label, game_date, game_datetime,
+            INSERT INTO games (event_id, season_label, season_key, season_type, game_date, game_datetime,
                                 team1, team2, score1, score2, url, scraped_at)
-            VALUES (:event_id, :season_label, :game_date, :game_datetime,
+            VALUES (:event_id, :season_label, :season_key, :season_type, :game_date, :game_datetime,
                     :team1, :team2, :score1, :score2, :url, :now)
             ON CONFLICT(event_id) DO UPDATE SET
                 season_label=excluded.season_label,
+                season_key=excluded.season_key,
+                season_type=excluded.season_type,
                 game_date=excluded.game_date,
                 game_datetime=excluded.game_datetime,
                 team1=excluded.team1,
@@ -170,11 +168,17 @@ def upsert_games(conn, games):
     return added, updated
 
 
-def rebuild_standings_snapshots(conn, season_label_regular: str):
+def rebuild_standings_snapshots_for(conn, season_label: str, season_key: str, season_type: str):
     """
-    Recomputes the full standings-by-date history for the regular season
-    from scratch (cheap enough given league size — a few hundred games/season).
-    Points: Win=2, Tie=1, Loss=0 (matches ORMRHL's published regular-season standings).
+    Recomputes the full standings-by-date history for ONE (season_label)
+    group from scratch. Points: Win=2, Tie=1, Loss=0.
+
+    Note: this same simple formula is applied to playoffs too, for lack of
+    a documented alternative -- the site's own playoff standings table
+    showed fractional point totals suggesting some kind of bonus-point
+    system per round, which isn't reverse-engineered here. Treat playoff
+    standings from this script as "game record over the playoffs," not
+    necessarily identical to the league's own playoff standings table.
     """
     rows = conn.execute(
         """
@@ -183,18 +187,18 @@ def rebuild_standings_snapshots(conn, season_label_regular: str):
         WHERE season_label = ?
         ORDER BY game_date ASC, event_id ASC
         """,
-        (season_label_regular,),
+        (season_label,),
     ).fetchall()
 
-    conn.execute("DELETE FROM standings_snapshots WHERE season_label = ?", (season_label_regular,))
+    conn.execute("DELETE FROM standings_snapshots WHERE season_label = ?", (season_label,))
 
     totals = defaultdict(lambda: {"gp": 0, "w": 0, "l": 0, "t": 0, "gf": 0, "ga": 0})
     snapshot_rows = []
 
-    dates_in_order = sorted(set(r["game_date"] for r in rows))
     games_by_date = defaultdict(list)
     for r in rows:
         games_by_date[r["game_date"]].append(r)
+    dates_in_order = sorted(games_by_date.keys())
 
     for d in dates_in_order:
         for r in games_by_date[d]:
@@ -215,12 +219,13 @@ def rebuild_standings_snapshots(conn, season_label_regular: str):
                 totals[t1]["t"] += 1
                 totals[t2]["t"] += 1
 
-        # snapshot standings as of this date for every team seen so far
         for team, stats in totals.items():
             pts = stats["w"] * 2 + stats["t"] * 1
             snapshot_rows.append(
                 {
-                    "season_label": season_label_regular,
+                    "season_label": season_label,
+                    "season_key": season_key,
+                    "season_type": season_type,
                     "as_of_date": d,
                     "team": team,
                     "team_icon": team_icon(team),
@@ -239,13 +244,26 @@ def rebuild_standings_snapshots(conn, season_label_regular: str):
     conn.executemany(
         """
         INSERT INTO standings_snapshots
-            (season_label, as_of_date, team, team_icon, team_color, gp, w, l, t, pts, gf, ga, diff)
-        VALUES (:season_label, :as_of_date, :team, :team_icon, :team_color, :gp, :w, :l, :t, :pts, :gf, :ga, :diff)
+            (season_label, season_key, season_type, as_of_date, team, team_icon, team_color,
+             gp, w, l, t, pts, gf, ga, diff)
+        VALUES (:season_label, :season_key, :season_type, :as_of_date, :team, :team_icon, :team_color,
+                :gp, :w, :l, :t, :pts, :gf, :ga, :diff)
         """,
         snapshot_rows,
     )
     conn.commit()
     return len(snapshot_rows)
+
+
+def rebuild_all_standings_snapshots(conn):
+    """Rebuilds standings snapshots for every distinct season_label present in `games`."""
+    season_rows = conn.execute(
+        "SELECT DISTINCT season_label, season_key, season_type FROM games ORDER BY season_key, season_type"
+    ).fetchall()
+    total = 0
+    for r in season_rows:
+        total += rebuild_standings_snapshots_for(conn, r["season_label"], r["season_key"], r["season_type"])
+    return total, len(season_rows)
 
 
 def export_csvs(conn):
@@ -255,19 +273,19 @@ def export_csvs(conn):
     with open(EXPORTS_DIR / "games.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(games[0].keys() if games else
-                         ["event_id", "season_label", "game_date", "game_datetime",
+                         ["event_id", "season_label", "season_key", "season_type", "game_date", "game_datetime",
                           "team1", "team2", "score1", "score2", "url", "scraped_at"])
         for g in games:
             writer.writerow([g[k] for k in g.keys()])
 
     snaps = conn.execute(
-        "SELECT * FROM standings_snapshots ORDER BY season_label, as_of_date, team"
+        "SELECT * FROM standings_snapshots ORDER BY season_key, season_type, as_of_date, team"
     ).fetchall()
     with open(EXPORTS_DIR / "standings_snapshots.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(snaps[0].keys() if snaps else
-                         ["season_label", "as_of_date", "team", "team_icon", "team_color", "gp", "w", "l", "t",
-                          "pts", "gf", "ga", "diff"])
+                         ["season_label", "season_key", "season_type", "as_of_date", "team", "team_icon",
+                          "team_color", "gp", "w", "l", "t", "pts", "gf", "ga", "diff"])
         for s in snaps:
             writer.writerow([s[k] for k in s.keys()])
     return snaps
@@ -276,7 +294,8 @@ def export_csvs(conn):
 def push_standings_to_sheets(snaps):
     """
     Optional: if GCP_SA_KEY_JSON is set, overwrite a 'Standings History' tab
-    in the shared Google Sheet with the current standings-by-date data.
+    in the shared Google Sheet with the current standings-by-date data
+    (across all seasons/types -- the sheet isn't season-scoped).
     Silently skipped if Sheets sync isn't configured.
     """
     gc = get_sheets_client()
@@ -303,23 +322,21 @@ def main():
     parser.add_argument(
         "--season-key",
         default=None,
-        help="Override season, e.g. 2026-2027. Defaults to auto-detected current season.",
+        help="Restrict to one season, e.g. 2026-2027. Default: scrape every season found on the page.",
     )
     args = parser.parse_args()
 
-    window = current_season_window()
-    season_key = args.season_key or window["season_key"]
-
-    print(f"Scraping past games for season {season_key} ...")
-    games, window = scrape_past_games(season_key)
-    print(f"Found {len(games)} completed games for this season on {PAST_GAMES_URL}")
+    scope = f"season {args.season_key}" if args.season_key else "all seasons found on the page"
+    print(f"Scraping past games ({scope}) ...")
+    games = scrape_past_games(args.season_key)
+    print(f"Found {len(games)} completed games on {PAST_GAMES_URL}")
 
     conn = get_db()
     added, updated = upsert_games(conn, games)
     print(f"Games table: +{added} new, {updated} updated")
 
-    snap_count = rebuild_standings_snapshots(conn, window["regular_season_label"])
-    print(f"Rebuilt {snap_count} standings-snapshot rows for '{window['regular_season_label']}'")
+    snap_count, n_seasons = rebuild_all_standings_snapshots(conn)
+    print(f"Rebuilt {snap_count} standings-snapshot rows across {n_seasons} season/type groups")
 
     snaps = export_csvs(conn)
     print(f"Exported CSVs to {EXPORTS_DIR}")
@@ -328,7 +345,7 @@ def main():
 
     conn.execute(
         "INSERT INTO scrape_log (script, run_at, rows_added, rows_updated, notes) VALUES (?, ?, ?, ?, ?)",
-        ("scrape_games.py", datetime.now(timezone.utc).isoformat(), added, updated, season_key),
+        ("scrape_games.py", datetime.now(timezone.utc).isoformat(), added, updated, args.season_key or "all"),
     )
     conn.commit()
     conn.close()

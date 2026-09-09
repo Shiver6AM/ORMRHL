@@ -70,6 +70,8 @@ async function renderBarChartRace(containerId, csvPath, opts) {
     iconField = null,
     teamField = null,
     colorField = null,
+    seasonKeyField = null,
+    seasonTypeField = null,
     topN = 10,
     title = "",
     stepDurationMs = 900,
@@ -77,12 +79,26 @@ async function renderBarChartRace(containerId, csvPath, opts) {
 
   let rankOffset = 0;
   let rankCount = topN;
+  let selectedSeasonKey = null;
+  let selectedSeasonType = "regular";
+
+  const hasSeasonSelector = !!(seasonKeyField && seasonTypeField);
 
   const container = document.getElementById(containerId);
   container.innerHTML = `
     <div class="race-header">
       <h2>${title}</h2>
       <div class="race-controls">
+        ${hasSeasonSelector ? `
+        <label class="race-season-label">Season
+          <select class="race-season-select"></select>
+        </label>
+        <label class="race-season-label">
+          <select class="race-type-select">
+            <option value="regular">Regular Season</option>
+            <option value="playoffs">Playoffs</option>
+          </select>
+        </label>` : ""}
         <label class="race-topn-label">Show
           <input type="number" class="race-topn-input" min="1" max="50" value="${topN}">
         </label>
@@ -96,16 +112,24 @@ async function renderBarChartRace(containerId, csvPath, opts) {
       <input type="range" class="race-scrubber" min="0" value="0" step="1">
       <span class="race-date-label"></span>
     </div>
-    <div class="race-svg-wrap"><svg class="race-svg"></svg></div>
+    <div class="race-svg-wrap">
+      <svg class="race-svg"></svg>
+      <p class="race-empty" style="display:none">No data for this season/type yet.</p>
+    </div>
   `;
 
-  const raw = await d3.csv(csvPath, d3.autoType);
-  if (!raw.length) {
+  const allRows = await d3.csv(csvPath, d3.autoType);
+  if (!allRows.length) {
     container.querySelector(".race-svg-wrap").innerHTML =
       "<p class='race-empty'>No data yet — check back once games have been played.</p>";
     return;
   }
 
+  const emptyMsgEl = container.querySelector(".race-svg-wrap > .race-empty");
+  const svgEl = container.querySelector(".race-svg");
+
+  const seasonSelect = container.querySelector(".race-season-select");
+  const typeSelect = container.querySelector(".race-type-select");
   const topnInput = container.querySelector(".race-topn-input");
   const pagePrevBtn = container.querySelector(".race-page-prev");
   const pageNextBtn = container.querySelector(".race-page-next");
@@ -113,6 +137,21 @@ async function renderBarChartRace(containerId, csvPath, opts) {
   const dateLabelEl = container.querySelector(".race-date-label");
   const scrubber = container.querySelector(".race-scrubber");
   const playBtn = container.querySelector(".race-play-btn");
+
+  if (hasSeasonSelector) {
+    const seasonKeys = Array.from(new Set(allRows.map((d) => d[seasonKeyField]))).sort().reverse();
+    selectedSeasonKey = seasonKeys[0] || null;
+    seasonSelect.innerHTML = seasonKeys.map((k) => `<option value="${k}">${k}</option>`).join("");
+    seasonSelect.value = selectedSeasonKey;
+    typeSelect.value = selectedSeasonType;
+  }
+
+  function currentRaw() {
+    if (!hasSeasonSelector) return allRows;
+    return allRows.filter(
+      (d) => d[seasonKeyField] === selectedSeasonKey && d[seasonTypeField] === selectedSeasonType
+    );
+  }
 
   const margin = { top: 10, right: 70, bottom: 10, left: 150 };
   const barGap = 8;
@@ -259,12 +298,20 @@ async function renderBarChartRace(containerId, csvPath, opts) {
 
   function rebuild() {
     stop();
-    const result = computeFrames(raw, {
+    const result = computeFrames(currentRaw(), {
       dateField, labelField, displayField, valueField, teamField, iconField, colorField,
       rankOffset, rankCount,
     });
     frames = result.frames;
     const total = result.totalEntities;
+    if (!frames.length) {
+      pageLabelEl.textContent = "0 of 0";
+      svgEl.style.display = "none";
+      emptyMsgEl.style.display = "";
+      return;
+    }
+    svgEl.style.display = "";
+    emptyMsgEl.style.display = "none";
     const from = Math.min(rankOffset + 1, total);
     const to = Math.min(rankOffset + rankCount, total);
     pageLabelEl.textContent = total ? `${from}–${to} of ${total}` : "0 of 0";
@@ -309,6 +356,18 @@ async function renderBarChartRace(containerId, csvPath, opts) {
     rankOffset = rankOffset + rankCount;
     rebuild();
   });
+  if (hasSeasonSelector) {
+    seasonSelect.addEventListener("change", () => {
+      selectedSeasonKey = seasonSelect.value;
+      rankOffset = 0;
+      rebuild();
+    });
+    typeSelect.addEventListener("change", () => {
+      selectedSeasonType = typeSelect.value;
+      rankOffset = 0;
+      rebuild();
+    });
+  }
 
   rebuild();
 }

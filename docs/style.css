@@ -75,6 +75,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .race-controls-playback {
@@ -87,6 +88,21 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.race-season-label {
+  font-size: 13px;
+  color: var(--steel);
+}
+
+.race-season-select,
+.race-type-select {
+  padding: 3px 6px;
+  border: 1px solid #c7d0d8;
+  border-radius: 4px;
+  font-size: 13px;
+  background: white;
+  color: var(--rink-blue);
 }
 
 .race-topn-input {

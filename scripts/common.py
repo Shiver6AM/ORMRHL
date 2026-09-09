@@ -61,6 +61,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS games (
             event_id        TEXT PRIMARY KEY,
             season_label    TEXT NOT NULL,   -- e.g. "Regular Season 2026-2027" or "Playoffs 2027"
+            season_key      TEXT,            -- e.g. "2026-2027" -- the year-range, regardless of type
+            season_type     TEXT,            -- "regular" | "playoffs" | "other"
             game_date       TEXT NOT NULL,   -- ISO date, YYYY-MM-DD
             game_datetime   TEXT,            -- ISO datetime if available
             team1           TEXT NOT NULL,
@@ -73,6 +75,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
         CREATE TABLE IF NOT EXISTS standings_snapshots (
             season_label    TEXT NOT NULL,
+            season_key      TEXT,
+            season_type     TEXT,
             as_of_date      TEXT NOT NULL,   -- standings after all games up to and including this date
             team            TEXT NOT NULL,
             team_icon       TEXT,
@@ -91,6 +95,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS player_game_stats (
             event_id        TEXT NOT NULL,
             season_label    TEXT NOT NULL,
+            season_key      TEXT,
+            season_type     TEXT,
             game_date       TEXT NOT NULL,
             team            TEXT NOT NULL,
             team_icon       TEXT,
@@ -118,6 +124,15 @@ def init_schema(conn: sqlite3.Connection) -> None:
     )
     conn.commit()
 
+    # Migrate any pre-existing database (committed before season_key/season_type
+    # existed) so it doesn't need to be deleted and rebuilt from scratch.
+    ensure_column(conn, "games", "season_key", "TEXT")
+    ensure_column(conn, "games", "season_type", "TEXT")
+    ensure_column(conn, "standings_snapshots", "season_key", "TEXT")
+    ensure_column(conn, "standings_snapshots", "season_type", "TEXT")
+    ensure_column(conn, "player_game_stats", "season_key", "TEXT")
+    ensure_column(conn, "player_game_stats", "season_type", "TEXT")
+
 
 def current_season_window(today: date | None = None) -> dict:
     """
@@ -143,6 +158,41 @@ def current_season_window(today: date | None = None) -> dict:
         "playoffs_label_fragment": f"Playoffs {end_year}",
         "season_key": f"{start_year}-{end_year}",
     }
+
+
+def season_type_and_key(season_label: str):
+    """
+    Parses the site's raw season label into a (season_type, season_key) pair
+    so games/standings/player-stats from any season -- and both regular
+    season and playoffs -- can be told apart and grouped correctly:
+      "Regular Season 2025-2026" -> ("regular", "2025-2026")
+      "Playoffs 2026"            -> ("playoffs", "2025-2026")  (playoffs are
+                                     labeled by the END year of the season)
+    Falls back to ("other", season_label) for anything unrecognized, rather
+    than raising, so an unexpected label never crashes a scrape run.
+    """
+    if season_label.startswith("Regular Season "):
+        return "regular", season_label[len("Regular Season "):].strip()
+    if season_label.startswith("Playoffs "):
+        year_text = season_label[len("Playoffs "):].strip()
+        try:
+            end_year = int(year_text)
+            return "playoffs", f"{end_year - 1}-{end_year}"
+        except ValueError:
+            return "playoffs", year_text
+    return "other", season_label
+
+
+def ensure_column(conn: sqlite3.Connection, table: str, column: str, coltype: str) -> None:
+    """
+    Lightweight migration: adds `column` to `table` if it isn't already
+    there. Lets an existing committed database (from before a schema change)
+    keep working without needing to be deleted and rebuilt from scratch.
+    """
+    existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+        conn.commit()
 
 
 ISO_DATETIME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})")

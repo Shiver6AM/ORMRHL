@@ -20,33 +20,49 @@ the `exports/*.csv` files into Flourish for a one-off if you ever want it.
 
 ## What it does
 
-- **`scripts/scrape_games.py`** — scrapes `/past-games/` for the current
-  season (auto-detected from today's date, or override with
-  `--season-key`), upserts each completed game, and rebuilds a full
-  **standings-by-date** history. Since the site publishes the full season
+- **`scripts/scrape_games.py`** — scrapes `/past-games/` in full (every
+  season the page lists, not just the current one — it's a single page
+  fetch either way, so there's no extra cost to always grabbing all of
+  it), upserts each completed game, and rebuilds a full
+  **standings-by-date** history **independently for every (season, regular
+  season/playoffs) combination found** — so historical seasons and
+  playoffs are all covered automatically, with no separate backfill step
+  needed for this script. Since the site publishes the full season
   schedule up front and posts scores as early as mid-game, this always
   re-parses the *entire* past-games listing and upserts every row — so a
   score that was live/partial when first scraped gets corrected
   automatically on the next run. Exports `exports/games.csv` and
-  `exports/standings_snapshots.csv`.
+  `exports/standings_snapshots.csv`. Pass `--season-key 2025-2026` to
+  restrict a run to just one season.
 
 - **`scripts/scrape_player_stats.py`** — by default, re-scrapes box scores
-  for **every** game in the season (not just new ones), since scorekeepers
-  can correct stats after a game. This is a small rec league, so a full
-  daily refresh is cheap (a couple hundred small page fetches). Pass
+  for **every game in the current season** (not just new ones), since
+  scorekeepers can correct stats after a game. This is scoped to the
+  current season by default (rather than all history) to keep the daily
+  job fast and polite to the site, since fetching a box score costs one
+  HTTP request per game. Pass `--all-seasons` once for an initial
+  historical backfill (or `--season-key 2025-2026` for just one past
+  season) — after that, the exports always include every season ever
+  scraped regardless of what a given run touches, since the export step
+  reads the whole database, not just what was just scraped. Pass
   `--incremental` for a faster run that only fetches games with no stats
   yet — fine for a quick manual check, not recommended for the scheduled
   job, since it will miss corrections. Exports
   `exports/player_game_stats.csv` and a cumulative **scoring race** file,
-  `exports/scoring_race.csv`, covering every player who's recorded a stat
-  (no top-N cap at the data layer — the chart itself handles that, so it
-  has a full pool to page through).
+  `exports/scoring_race.csv`, covering every player across every
+  season/type (no top-N cap at the data layer — the chart itself handles
+  that, so it has a full pool to page through).
 
-  **Mid-season trades:** each player's `team`/`team_icon`/`team_color` in
-  the scoring-race export reflect whatever team they played for *as of
-  that game* — so if a player is traded, games before the trade still show
-  their old team and everything from the trade date onward shows the new
-  one, without needing to touch historical rows.
+  **Cumulative totals reset per (season, type):** a player's playoff
+  points never carry into their regular-season total, and one season never
+  carries into the next — each group starts its running total fresh.
+
+  **Mid-season trades:** within a given season/type, each player's
+  `team`/`team_icon`/`team_color` in the scoring-race export reflect
+  whatever team they played for *as of that game* — so if a player is
+  traded, games before the trade still show their old team and everything
+  from the trade date onward shows the new one, without needing to touch
+  historical rows.
 
 Both scripts also optionally push the same data to Google Sheets if you
 set a `GCP_SA_KEY_JSON` secret (see "Optional: Google Sheets" below).
@@ -86,12 +102,19 @@ bar colors, since the site has no equivalent "official color" to scrape.
 Both charts show each bar in its team's color with the team logo overlaid
 at the end of the bar, matching Flourish's look. Each chart also has:
 
+- **Season and Regular Season/Playoffs dropdowns** — every season and type
+  ever scraped is selectable; defaults to the most recent season's regular
+  season on load. A season/type with no data yet (e.g. picking "Playoffs"
+  before they've started) shows a simple "no data yet" message rather than
+  an empty chart.
 - A **"Show" count** input (defaults: 8 for standings, 10 for scoring) —
   change it any time to display more or fewer bars.
 - **Prev / Next pagination** — once more entities exist than the current
   "Show" count (mainly relevant for the scoring race, once more than ~10
-  players have points), page through the rest ranked by their final total.
-- Play/pause and a scrubber to move through the season date by date.
+  players have points), page through the rest ranked by their final total
+  for the selected season/type.
+- Play/pause and a scrubber to move through the selected season/type date
+  by date.
 
 The GitHub Actions workflow copies the freshly-scraped CSVs into
 `docs/data/` and commits them every run, so once Pages is enabled these
@@ -103,6 +126,12 @@ pages update themselves with zero manual steps.
    folder `/docs` → Save.
 3. Embed `https://yourname.github.io/ORMRHL/standings.html` (and
    `/scoring.html`) on your own site via `<iframe>`.
+4. To populate historical seasons in the player-stats/scoring-race chart
+   (standings history comes for free — see above), run
+   `python scripts/scrape_player_stats.py --all-seasons` once manually.
+   The scheduled daily job stays scoped to the current season afterward;
+   history you've already backfilled stays in the database and keeps
+   showing up in the exports regardless.
 
 ## Running locally
 
@@ -168,7 +197,12 @@ Data tab → Import from URL.
 3. **Playoff "Finals" games** sometimes use slugged URLs with a round
    label in the title; the scraper strips known prefixes to recover team
    names — double-check once playoffs start.
-4. **Standings points system** is hardcoded as Win=2, Tie=1, Loss=0.
+4. **Standings points system** is hardcoded as Win=2, Tie=1, Loss=0, and
+   this same simple formula is applied to playoffs too. The site's own
+   playoff standings table showed fractional point totals, suggesting some
+   kind of bonus-point system per round that isn't reverse-engineered
+   here — treat playoff standings from this project as "game record over
+   the playoffs," not necessarily identical to the league's own table.
 5. **Skater points leaderboard**: no skater G/A/PTS leaderboard was found
    in `/player-stats-YYYY-YYYY/`'s static HTML, so the scoring race is
    built entirely from aggregated game box scores.
