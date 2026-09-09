@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ORMRHL Scoring Race</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+  <nav class="page-nav">
+    <a href="index.html">Home</a>
+    <a href="standings.html">Standings Race</a>
+    <a href="scoring.html" class="active">Scoring Race</a>
+  </nav>
+  <div class="race-card" id="scoring-race"></div>
+  <script src="race-chart.js"></script>
+  <script>
+    renderBarChartRace("scoring-race", "data/scoring_race.csv", {
+      dateField: "game_date",
+      labelField: "player_slug",
+      displayField: "player_name",
+      valueField: "cumulative_points",
+      teamField: "team",
+      iconField: "team_icon",
+      colorField: "team_color",
+      topN: 10,
+      title: "Top Scorers",
+      stepDurationMs: 800,
+    });
+  </script>
+</body>
+</html>

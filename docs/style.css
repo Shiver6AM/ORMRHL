@@ -1,0 +1,200 @@
+/* style.css — ORMRHL stats pages
+   Palette pulled from the rink: deep ice-blue, cool grey-white, a single
+   warning-stripe amber for emphasis (penalty-box yellow, not a generic accent). */
+
+:root {
+  --ice: #eef3f6;
+  --rink-blue: #0f2a43;
+  --rink-blue-light: #1f4468;
+  --steel: #5c6b7a;
+  --line-red: #c8102e;
+  --amber: #f2a900;
+  --card-bg: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ice);
+  color: var(--rink-blue);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  padding: 24px;
+}
+
+.page-nav {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.page-nav a {
+  color: var(--rink-blue-light);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  padding-bottom: 2px;
+}
+
+.page-nav a.active,
+.page-nav a:hover {
+  border-bottom-color: var(--amber);
+}
+
+.race-card {
+  background: var(--card-bg);
+  border-radius: 6px;
+  border-top: 4px solid var(--rink-blue);
+  padding: 20px 24px 24px;
+  max-width: 780px;
+  margin: 0 auto;
+  box-shadow: 0 1px 3px rgba(15, 42, 67, 0.12);
+}
+
+.race-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.race-header h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--rink-blue);
+}
+
+.race-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.race-controls-playback {
+  margin-bottom: 14px;
+}
+
+.race-topn-label {
+  font-size: 13px;
+  color: var(--steel);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.race-topn-input {
+  width: 52px;
+  padding: 3px 6px;
+  border: 1px solid #c7d0d8;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.race-page-btn {
+  background: none;
+  border: 1px solid #c7d0d8;
+  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  color: var(--rink-blue);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.race-page-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.race-page-btn:not(:disabled):hover {
+  border-color: var(--rink-blue);
+}
+
+.race-page-label {
+  font-size: 13px;
+  color: var(--steel);
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+}
+
+.race-play-btn {
+  background: var(--rink-blue);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.race-play-btn:hover { background: var(--rink-blue-light); }
+
+.race-scrubber {
+  width: 160px;
+  accent-color: var(--amber);
+}
+
+.race-date-label {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--steel);
+  min-width: 88px;
+}
+
+.race-svg-wrap {
+  width: 100%;
+}
+
+.race-svg text {
+  fill: var(--rink-blue);
+}
+
+.race-empty {
+  color: var(--steel);
+  font-size: 14px;
+  padding: 24px 0;
+}
+
+.landing h1 {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+.landing p {
+  color: var(--steel);
+  max-width: 480px;
+  margin-bottom: 20px;
+}
+
+.landing-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.landing-links a {
+  display: block;
+  background: var(--card-bg);
+  border-top: 4px solid var(--rink-blue);
+  border-radius: 6px;
+  padding: 18px 20px;
+  text-decoration: none;
+  color: var(--rink-blue);
+  font-weight: 600;
+  min-width: 200px;
+  box-shadow: 0 1px 3px rgba(15, 42, 67, 0.12);
+}
+
+.landing-links a:hover {
+  border-top-color: var(--amber);
+}

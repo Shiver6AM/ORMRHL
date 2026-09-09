@@ -1,0 +1,4 @@
+data/ormrhl.db-journal
+__pycache__/
+*.pyc
+.DS_Store

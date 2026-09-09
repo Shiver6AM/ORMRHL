@@ -1,4 +1,9 @@
-gspread==6.1.2
-google-auth==2.34.0
-requests==2.32.3
-beautifulsoup4==4.12.3
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5.0
+
+# Optional: only needed if you set GCP_SA_KEY_JSON to also push data to
+# Google Sheets (e.g. if you upgrade to a Flourish plan with Live CSV later).
+# Safe to leave installed even if unused.
+gspread>=6.1
+google-auth>=2.34

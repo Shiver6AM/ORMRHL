@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ORMRHL Standings Race</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+  <nav class="page-nav">
+    <a href="index.html">Home</a>
+    <a href="standings.html" class="active">Standings Race</a>
+    <a href="scoring.html">Scoring Race</a>
+  </nav>
+  <div class="race-card" id="standings-race"></div>
+  <script src="race-chart.js"></script>
+  <script>
+    renderBarChartRace("standings-race", "data/standings_snapshots.csv", {
+      dateField: "as_of_date",
+      labelField: "team",
+      valueField: "pts",
+      teamField: "team",
+      iconField: "team_icon",
+      colorField: "team_color",
+      topN: 8,
+      title: "Regular Season Standings",
+      stepDurationMs: 800,
+    });
+  </script>
+</body>
+</html>
