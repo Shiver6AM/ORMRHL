@@ -1,12 +1,3 @@
-icon to edit → replace contents → commit) — it's a single file, probably faster than round-tripping the token.
-Here's the file if you want to paste it directly:
-
-Ran a command
-bash
-
-cat /home/claude/ormrhl-scraper/.github/workflows/scrape.yml
-Output
-
 name: Scrape ORMRHL data
 
 on:
