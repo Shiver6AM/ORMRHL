@@ -1,1 +1,1 @@
-event_id,season_label,game_date,team,team_icon,team_color,player_name,player_slug,position,goals,assists,points,minor_pen,major_pen
+event_id,season_label,season_key,season_type,game_date,team,team_icon,team_color,player_name,player_slug,position,goals,assists,points,minor_pen,major_pen
