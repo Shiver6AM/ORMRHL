@@ -2,6 +2,14 @@
 // A small, dependency-light (D3 only) animated bar-chart-race renderer.
 // Used for standings-over-time and scoring-race-over-time. Generic enough
 // for any "ranked entities over time" CSV with a color/icon per row.
+//
+// NOTE ON CACHING: GitHub Pages / its CDN can serve a stale cached copy of
+// this file for a while after a deploy. The HTML pages load it as
+// "race-chart.js?v=N" -- bump N whenever this file changes so browsers and
+// the CDN are forced to fetch the new version immediately instead of
+// waiting out a cache TTL. (The CSV data files don't have this problem --
+// renderBarChartRace appends a timestamp to every data fetch below, so
+// stats are always loaded fresh.)
 
 function sanitizeId(label) {
   return "id" + String(label).replace(/[^a-zA-Z0-9]/g, "_");
@@ -171,7 +179,8 @@ async function renderBarChartRace(containerId, csvPath, opts) {
     </div>
   `;
 
-  const allRows = await d3.csv(csvPath, numericRowConverter(numericFields));
+  const cacheBustedPath = csvPath + (csvPath.includes("?") ? "&" : "?") + "t=" + Date.now();
+  const allRows = await d3.csv(cacheBustedPath, numericRowConverter(numericFields));
   if (!allRows.length) {
     container.querySelector(".race-svg-wrap").innerHTML =
       "<p class='race-empty'>No data yet — check back once games have been played.</p>";
