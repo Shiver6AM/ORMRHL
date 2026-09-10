@@ -1,11 +1,11 @@
 {
-  "_readme": "Edit this file to fix team colors/logos. 'color' drives bar fill in the race charts; 'logo' is used if the live scrape of a game page doesn't turn up a logo. Colors below are placeholder guesses (the league site doesn't publish official team colors) — swap in real ones whenever you have them. Add new teams here as they join the league; unknown teams fall back to a neutral grey automatically.",
+  "_readme": "Edit this file to fix team colors/logos. 'color' drives bar fill in the race charts; 'logo' is used if the live scrape of a game page doesn't turn up a logo. Kings/Grizzlies/Eagles colors are confirmed from an actual Flourish chart; other teams are still placeholder guesses (the league site doesn't publish official colors) — swap in real ones whenever you have them. Add new teams here as they join the league; unknown teams fall back to a neutral grey automatically.",
 
   "Leafs":            { "color": "#1B4D8E", "logo": "https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png" },
-  "Kings":             { "color": "#5B2A86", "logo": "https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png" },
+  "Kings":             { "color": "#9620EC", "logo": "https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png" },
   "Komodo Dragons":    { "color": "#3B6E2A", "logo": "https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png" },
-  "Grizzlies":         { "color": "#8B4A26", "logo": "https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png" },
-  "Eagles":            { "color": "#A31E2E", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png" },
+  "Grizzlies":         { "color": "#FB202A", "logo": "https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png" },
+  "Eagles":            { "color": "#262020", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png" },
   "Rhinos":            { "color": "#6B6F76", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/Rhinos_logo-128x128.png" },
   "Wildcats":          { "color": "#D97B29", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/wildcats_logo-128x128.png" },
   "Cobras":            { "color": "#2B8C5C", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png" },
