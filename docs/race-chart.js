@@ -4,7 +4,30 @@
 // for any "ranked entities over time" CSV with a color/icon per row.
 
 function sanitizeId(label) {
-  return "id" + label.replace(/[^a-zA-Z0-9]/g, "_");
+  return "id" + String(label).replace(/[^a-zA-Z0-9]/g, "_");
+}
+
+/**
+ * Builds a d3.csv row-conversion function that coerces ONLY the given
+ * numeric field names to Number, leaving everything else (dates, labels,
+ * team names, colors, icons) as plain strings.
+ *
+ * This matters more than it looks: d3.csv's built-in `d3.autoType` helper
+ * auto-detects and parses ISO-format date strings into JS Date objects.
+ * That silently breaks two things here -- sorting Date objects with a
+ * plain `.sort()` compares their string form (e.g. "Mon Sep 15 2025..."),
+ * which has nothing to do with chronological order, and a Set of Date
+ * objects doesn't de-duplicate equal calendar days since each parsed cell
+ * gets its own object instance. Keeping dates as plain "YYYY-MM-DD"
+ * strings sorts and de-duplicates correctly with no extra code.
+ */
+function numericRowConverter(numericFields) {
+  return function (row) {
+    for (const f of numericFields) {
+      if (row[f] !== undefined && row[f] !== "") row[f] = +row[f];
+    }
+    return row;
+  };
 }
 
 /**
@@ -14,8 +37,16 @@ function sanitizeId(label) {
  * their last known value AND last known team/icon/color -- this is what
  * makes a mid-season trade show the new team from the trade date onward
  * without needing to touch historical rows.
+ *
+ * extraFields (optional): map of {outputKey: csvColumnName} for values that
+ * should be tracked/forward-filled alongside the main value but aren't
+ * used for ranking -- e.g. goals+assists tracked alongside points, so a
+ * "points" bar can also show its goals/assists breakdown.
  */
-function computeFrames(raw, { dateField, labelField, displayField, valueField, teamField, iconField, colorField, rankOffset, rankCount }) {
+function computeFrames(raw, {
+  dateField, labelField, displayField, valueField, teamField, iconField, colorField,
+  extraFields, rankOffset, rankCount,
+}) {
   const dates = Array.from(new Set(raw.map((d) => d[dateField]))).sort();
 
   const byLabel = d3.group(raw, (d) => d[labelField]);
@@ -29,11 +60,14 @@ function computeFrames(raw, { dateField, labelField, displayField, valueField, t
     .slice(rankOffset, rankOffset + rankCount)
     .map((d) => d.label);
 
+  const extraKeys = extraFields ? Object.keys(extraFields) : [];
+
   const state = new Map(
-    finalTotals.map((label) => [
-      label,
-      { value: 0, display: label, team: null, icon: null, color: "#6B7684" },
-    ])
+    finalTotals.map((label) => {
+      const s = { value: 0, display: label, team: null, icon: null, color: "#6B7684" };
+      for (const k of extraKeys) s[k] = 0;
+      return [label, s];
+    })
   );
 
   const frames = dates.map((date) => {
@@ -47,12 +81,15 @@ function computeFrames(raw, { dateField, labelField, displayField, valueField, t
         if (teamField) s.team = match[teamField];
         if (iconField) s.icon = match[iconField];
         if (colorField) s.color = match[colorField] || s.color;
+        for (const k of extraKeys) s[k] = match[extraFields[k]];
       }
     }
     const bars = finalTotals
       .map((label) => {
         const s = state.get(label);
-        return { label, display: s.display, value: s.value, team: s.team, icon: s.icon, color: s.color };
+        const bar = { label, display: s.display, value: s.value, team: s.team, icon: s.icon, color: s.color };
+        for (const k of extraKeys) bar[k] = s[k];
+        return bar;
       })
       .sort((a, b) => d3.descending(a.value, b.value));
     return { date, bars };
@@ -66,12 +103,15 @@ async function renderBarChartRace(containerId, csvPath, opts) {
     dateField,
     labelField,
     displayField = null,
-    valueField,
+    valueField: staticValueField,
     iconField = null,
     teamField = null,
     colorField = null,
     seasonKeyField = null,
     seasonTypeField = null,
+    metricOptions = null, // e.g. [{key:'points', label:'Points', field:'cumulative_points', breakdown:{goals:'cumulative_goals', assists:'cumulative_assists'}}, ...]
+    defaultMetric = null,
+    numericFields = [],
     topN = 10,
     title = "",
     stepDurationMs = 900,
@@ -81,8 +121,15 @@ async function renderBarChartRace(containerId, csvPath, opts) {
   let rankCount = topN;
   let selectedSeasonKey = null;
   let selectedSeasonType = "regular";
+  let selectedMetricKey = defaultMetric || (metricOptions ? metricOptions[0].key : null);
 
   const hasSeasonSelector = !!(seasonKeyField && seasonTypeField);
+  const hasMetricSelector = !!(metricOptions && metricOptions.length > 1);
+
+  function currentMetric() {
+    if (!metricOptions) return { field: staticValueField, breakdown: null };
+    return metricOptions.find((m) => m.key === selectedMetricKey) || metricOptions[0];
+  }
 
   const container = document.getElementById(containerId);
   container.innerHTML = `
@@ -97,6 +144,12 @@ async function renderBarChartRace(containerId, csvPath, opts) {
           <select class="race-type-select">
             <option value="regular">Regular Season</option>
             <option value="playoffs">Playoffs</option>
+          </select>
+        </label>` : ""}
+        ${hasMetricSelector ? `
+        <label class="race-season-label">
+          <select class="race-metric-select">
+            ${metricOptions.map((m) => `<option value="${m.key}">${m.label}</option>`).join("")}
           </select>
         </label>` : ""}
         <label class="race-topn-label">Show
@@ -118,7 +171,7 @@ async function renderBarChartRace(containerId, csvPath, opts) {
     </div>
   `;
 
-  const allRows = await d3.csv(csvPath, d3.autoType);
+  const allRows = await d3.csv(csvPath, numericRowConverter(numericFields));
   if (!allRows.length) {
     container.querySelector(".race-svg-wrap").innerHTML =
       "<p class='race-empty'>No data yet — check back once games have been played.</p>";
@@ -130,6 +183,7 @@ async function renderBarChartRace(containerId, csvPath, opts) {
 
   const seasonSelect = container.querySelector(".race-season-select");
   const typeSelect = container.querySelector(".race-type-select");
+  const metricSelect = container.querySelector(".race-metric-select");
   const topnInput = container.querySelector(".race-topn-input");
   const pagePrevBtn = container.querySelector(".race-page-prev");
   const pageNextBtn = container.querySelector(".race-page-next");
@@ -145,6 +199,9 @@ async function renderBarChartRace(containerId, csvPath, opts) {
     seasonSelect.value = selectedSeasonKey;
     typeSelect.value = selectedSeasonType;
   }
+  if (hasMetricSelector) {
+    metricSelect.value = selectedMetricKey;
+  }
 
   function currentRaw() {
     if (!hasSeasonSelector) return allRows;
@@ -153,7 +210,7 @@ async function renderBarChartRace(containerId, csvPath, opts) {
     );
   }
 
-  const margin = { top: 10, right: 70, bottom: 10, left: 150 };
+  const margin = { top: 10, right: 90, bottom: 10, left: 150 };
   const barGap = 8;
   const width = container.clientWidth || 640;
 
@@ -175,6 +232,14 @@ async function renderBarChartRace(containerId, csvPath, opts) {
     playing = false;
     playBtn.textContent = "▶";
     if (timer) clearInterval(timer);
+  }
+
+  function formatValue(d) {
+    const metric = currentMetric();
+    if (metric.breakdown) {
+      return `${d.value} (${d.goals}G, ${d.assists}A)`;
+    }
+    return String(d.value);
   }
 
   function draw(frameIndex) {
@@ -274,7 +339,7 @@ async function renderBarChartRace(containerId, csvPath, opts) {
             .attr("x", (d) => x(d.value) + 8)
             .attr("y", (d, i) => y(i) + y.bandwidth() / 2)
             .attr("dy", "0.35em")
-            .text((d) => d.value),
+            .text((d) => formatValue(d)),
         (update) => update,
         (exit) => exit.remove()
       )
@@ -284,6 +349,12 @@ async function renderBarChartRace(containerId, csvPath, opts) {
       .attr("x", (d) => x(d.value) + 8)
       .attr("y", (d, i) => y(i) + y.bandwidth() / 2)
       .textTween(function (d) {
+        // Only animate the count-up for the plain-number case; a
+        // goals/assists breakdown string isn't meaningfully "interpolated"
+        // digit by digit, so it just snaps to the new value each frame.
+        if (currentMetric().breakdown) {
+          return () => formatValue(d);
+        }
         const node = this;
         const prev = +node.__prevValue__ || 0;
         node.__prevValue__ = d.value;
@@ -298,8 +369,12 @@ async function renderBarChartRace(containerId, csvPath, opts) {
 
   function rebuild() {
     stop();
+    const metric = currentMetric();
     const result = computeFrames(currentRaw(), {
-      dateField, labelField, displayField, valueField, teamField, iconField, colorField,
+      dateField, labelField, displayField,
+      valueField: metric.field,
+      teamField, iconField, colorField,
+      extraFields: metric.breakdown || null,
       rankOffset, rankCount,
     });
     frames = result.frames;
@@ -364,6 +439,13 @@ async function renderBarChartRace(containerId, csvPath, opts) {
     });
     typeSelect.addEventListener("change", () => {
       selectedSeasonType = typeSelect.value;
+      rankOffset = 0;
+      rebuild();
+    });
+  }
+  if (hasMetricSelector) {
+    metricSelect.addEventListener("change", () => {
+      selectedMetricKey = metricSelect.value;
       rankOffset = 0;
       rebuild();
     });

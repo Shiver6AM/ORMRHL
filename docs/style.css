@@ -96,7 +96,8 @@ body {
 }
 
 .race-season-select,
-.race-type-select {
+.race-type-select,
+.race-metric-select {
   padding: 3px 6px;
   border: 1px solid #c7d0d8;
   border-radius: 4px;
