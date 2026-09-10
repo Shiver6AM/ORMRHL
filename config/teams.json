@@ -3,13 +3,13 @@
 
   "Leafs":            { "color": "#1B4D8E", "logo": "https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png" },
   "Kings":             { "color": "#9620EC", "logo": "https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png" },
-  "Komodo Dragons":    { "color": "#3B6E2A", "logo": "https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png" },
-  "Grizzlies":         { "color": "#FB202A", "logo": "https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png" },
-  "Eagles":            { "color": "#262020", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png" },
+  "Komodo Dragons":    { "color": "#71f57c", "logo": "https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png" },
+  "Grizzlies":         { "color": "#fc2803", "logo": "https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png" },
+  "Eagles":            { "color": "#020302", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png" },
   "Rhinos":            { "color": "#6B6F76", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/Rhinos_logo-128x128.png" },
   "Wildcats":          { "color": "#D97B29", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/wildcats_logo-128x128.png" },
   "Cobras":            { "color": "#2B8C5C", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png" },
-  "Marlins":           { "color": "#1E8A8A", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/marlins_logo-128x128.png" },
+  "Marlins":           { "color": "#ebf1fa", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/marlins_logo-128x128.png" },
   "Falcons":           { "color": "#233A6B", "logo": "https://ormrhl.com/wp-content/uploads/2021/11/falcons_icon-128x128.png" },
 
   "_fallback_color": "#6B7684"
