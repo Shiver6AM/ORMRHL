@@ -273,8 +273,11 @@ async function renderBarChartRace(containerId, csvPath, opts) {
         defs
           .append("clipPath")
           .attr("id", `clip-${cid}`)
+          .attr("clipPathUnits", "objectBoundingBox") // circle relative to the image's OWN box, not the SVG origin
           .append("circle")
-          .attr("r", 11);
+          .attr("cx", 0.5)
+          .attr("cy", 0.5)
+          .attr("r", 0.5);
       }
     }
 
@@ -310,6 +313,8 @@ async function renderBarChartRace(containerId, csvPath, opts) {
             .attr("href", (d) => d.icon)
             .attr("width", 22)
             .attr("height", 22)
+            .attr("x", (d, i) => x(d.value) - 26)
+            .attr("y", (d, i) => y(i) + y.bandwidth() / 2 - 11)
             .attr("clip-path", (d) => `url(#clip-${sanitizeId(d.label)})`),
         (update) => update,
         (exit) => exit.remove()
