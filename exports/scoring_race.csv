@@ -17541,11 +17541,100 @@ season_key,season_type,game_date,player_name,player_slug,team,team_icon,team_col
 2026-2027,regular,2026-09-21,John Ventrella Jr,john-ventrella-jr-3,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,1,1,2
 2026-2027,regular,2026-09-21,Nick Gesualdo,nick-gesualdo,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,1,1,2
 2026-2027,regular,2026-09-21,Carter Harrison,carter-harrison,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,5,0,5
-2026-2027,regular,2026-09-21,Luke Rybuck,luke-rybuck,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,2,1,3
+2026-2027,regular,2026-09-21,Luke Rybuck,luke-rybuck,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,2,3,5
 2026-2027,regular,2026-09-21,Mario Mazzucco,mario-mazzucco,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,0,11,11
 2026-2027,regular,2026-09-21,Ethan DaSilva,ethan-dasilva,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,4,2,6
 2026-2027,regular,2026-09-21,Tony Ventrella,tony-ventrella,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,0,0,0
-2026-2027,regular,2026-09-21,Chris Kameka,chris-kameka,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,2,0,2
-2026-2027,regular,2026-09-21,Nick Simone,nick-simone,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,1,3,4
+2026-2027,regular,2026-09-21,Chris Kameka,chris-kameka,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,2,3,5
+2026-2027,regular,2026-09-21,Nick Simone,nick-simone,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,1,4,5
 2026-2027,regular,2026-09-21,Anthony Ventrella,anthony-ventrella,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,4,3,7
 2026-2027,regular,2026-09-21,Matt Lamanna,matt-lamanna,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,0,6,6
+2026-2027,regular,2026-09-24,Steve Gertsakis,steve-gertsakis,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,0,0,0
+2026-2027,regular,2026-09-24,Deno Bergamin,deno-bergamin,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,0,1,1
+2026-2027,regular,2026-09-24,Jason Todd,jason-todd,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,0,2,2
+2026-2027,regular,2026-09-24,Phil Benheim,phil-benheim,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,0,3,3
+2026-2027,regular,2026-09-24,Leo Napolitano,leo-napolitano,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,0,0,0
+2026-2027,regular,2026-09-24,Dave Frook,dave-frook,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,2,2,4
+2026-2027,regular,2026-09-24,Griffin Boyd,griffin-boyd,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,2,1,3
+2026-2027,regular,2026-09-24,Matt Tyndall,matt-tyndall,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,5,1,6
+2026-2027,regular,2026-09-24,Cam Jackson,cam-jackson,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,1,1,2
+2026-2027,regular,2026-09-24,Rocco Malfara,rocco-malfara,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,0,2,2
+2026-2027,regular,2026-09-24,Brendan Pon,brendan-pon,Kings,https://ormrhl.com/wp-content/uploads/2025/09/kingsfin-128x128.png,#9620EC,0,3,3
+2026-2027,regular,2026-09-24,Mark Mitchell,mark-mitchell,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,0,2,2
+2026-2027,regular,2026-09-24,James Mitchell,james-mitchell,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,2,4,6
+2026-2027,regular,2026-09-24,Chris Poleto,chris-poleto,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,5,3,8
+2026-2027,regular,2026-09-24,Jake Cowden,jake-cowden,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,0,0,0
+2026-2027,regular,2026-09-24,Steve Dee,steve-dee,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,0,1,1
+2026-2027,regular,2026-09-24,Adam Foster,adam-foster,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,1,3,4
+2026-2027,regular,2026-09-24,Lorne Feld,lorne-feld,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,0,0,0
+2026-2027,regular,2026-09-24,Angelo Capone,angelo-capone,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,0,0,0
+2026-2027,regular,2026-09-24,Massimo Venditti,massimo-venditti,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,0,0,0
+2026-2027,regular,2026-09-24,Lucas Palmeri,lucas-palmeri,Wolves,https://ormrhl.com/wp-content/uploads/2026/09/wolves2-128x128.png,#6B7684,0,1,1
+2026-2027,regular,2026-09-24,John Ventrella,john-ventrella,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,0,4,4
+2026-2027,regular,2026-09-24,Nick Gesualdo,nick-gesualdo,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,1,1,2
+2026-2027,regular,2026-09-24,Carter Harrison,carter-harrison,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,6,0,6
+2026-2027,regular,2026-09-24,Luke Rybuck,luke-rybuck,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,3,4,7
+2026-2027,regular,2026-09-24,Mario Mazzucco,mario-mazzucco,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,0,12,12
+2026-2027,regular,2026-09-24,Chris Kameka,chris-kameka,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,3,4,7
+2026-2027,regular,2026-09-24,Anthony Ventrella,anthony-ventrella,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,4,4,8
+2026-2027,regular,2026-09-24,Matt Lamanna,matt-lamanna,Eagles,https://ormrhl.com/wp-content/uploads/2021/11/Eagles_logo-128x128.png,#020302,0,7,7
+2026-2027,regular,2026-09-24,Luke Harris,luke-harris,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,0,0,0
+2026-2027,regular,2026-09-24,Daniel Konkine,daniel-konkine,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,2,2,4
+2026-2027,regular,2026-09-24,Lucas Kleine,lucas-kleine,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,0,0,0
+2026-2027,regular,2026-09-24,Dane Salayka,dane-salayka,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,0,1,1
+2026-2027,regular,2026-09-24,Tim Diceman,tim-diceman,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,1,0,1
+2026-2027,regular,2026-09-24,Neil De Ciantis,neil-de-ciantis,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,3,1,4
+2026-2027,regular,2026-09-24,Michael Strumos,michael-strumos,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,0,2,2
+2026-2027,regular,2026-09-24,Darren Desrosiers,darren-desrosiers,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,3,2,5
+2026-2027,regular,2026-09-24,Frank Loduca,frank-loduca,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,3,1,4
+2026-2027,regular,2026-09-24,Anthony Loduca,anthony-loduca,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,3,5,8
+2026-2027,regular,2026-09-24,Lucas Ackerman,lucas-ackerman,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,2,3,5
+2026-2027,regular,2026-09-24,Michael Perri,michael-perri,Cobras,https://ormrhl.com/wp-content/uploads/2021/11/Cobras_Logo-128x128.png,#1e294f,0,0,0
+2026-2027,regular,2026-09-24,Mario Carriero,mario-carriero,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,0,0,0
+2026-2027,regular,2026-09-24,Jordan Bodimeade,jordan-bodimeade,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,0,1,1
+2026-2027,regular,2026-09-24,Naithan Loach,naithan-loach,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,1,1,2
+2026-2027,regular,2026-09-24,Joey Leger,joey-leger,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,1,1,2
+2026-2027,regular,2026-09-24,Zubair Sayedzadah,zubair-sayedzadah,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,2,1,3
+2026-2027,regular,2026-09-24,Ben Smylie,ben-smylie,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,0,0,0
+2026-2027,regular,2026-09-24,James Stewart,james-stewart,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,1,1,2
+2026-2027,regular,2026-09-24,Hugh Smylie,hugh-smylie,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,0,2,2
+2026-2027,regular,2026-09-24,Shabeer Sayedzadah,shabeer-sayedzadah,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,0,0,0
+2026-2027,regular,2026-09-24,Jaro Verchkovski,jaro-verchkovski,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,0,0,0
+2026-2027,regular,2026-09-24,Tyler Kozak,tyler-kozak,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,2,2,4
+2026-2027,regular,2026-09-24,James Counter,james-counter,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,0,0,0
+2026-2027,regular,2026-09-24,Josh Silverman,josh-silverman,Killer Bees,https://ormrhl.com/wp-content/uploads/2026/09/killerbeers-128x128.png,#6B7684,1,0,1
+2026-2027,regular,2026-09-24,David Paluzzi,david-paluzzi,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,0,0,0
+2026-2027,regular,2026-09-24,Noah Ubogi,noah-ubogi,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,0,1,1
+2026-2027,regular,2026-09-24,Noah Doyle,noah-doyle,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,4,3,7
+2026-2027,regular,2026-09-24,Dale Bishop,dale-bishop,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,0,2,2
+2026-2027,regular,2026-09-24,Ty Vair,ty-vair,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,0,3,3
+2026-2027,regular,2026-09-24,Dan Richards,dan-richards,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,1,0,1
+2026-2027,regular,2026-09-24,Eric Smith,eric-smith,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,2,1,3
+2026-2027,regular,2026-09-24,Scott Browne,scott-browne,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,0,3,3
+2026-2027,regular,2026-09-24,Kevin Wells,kevin-wells,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,1,2,3
+2026-2027,regular,2026-09-24,Mark Curtis,mark-curtis,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,1,3,4
+2026-2027,regular,2026-09-24,Steve Smith,steve-smith,Komodo Dragons,https://ormrhl.com/wp-content/uploads/2022/09/komodo-128x128.png,#71f57c,7,3,10
+2026-2027,regular,2026-09-24,Trystan Lebrun,trystan-lebrun,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,0,0,0
+2026-2027,regular,2026-09-24,Josh Panetta,josh-panetta,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,1,1,2
+2026-2027,regular,2026-09-24,John West,john-west,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,1,0,1
+2026-2027,regular,2026-09-24,Daniel Deangelis,daniel-deangelis,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,0,0,0
+2026-2027,regular,2026-09-24,Lucas Periera,lucas-periera,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,1,3,4
+2026-2027,regular,2026-09-24,Gio Pasquale,gio-pasquale,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,2,5,7
+2026-2027,regular,2026-09-24,Alex Hyde,alex-hyde,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,4,2,6
+2026-2027,regular,2026-09-24,Johnny Lucas,johnny-lucas,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,1,1,2
+2026-2027,regular,2026-09-24,Jacob Schroder,jacob-schroder,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,3,3,6
+2026-2027,regular,2026-09-24,Jeff Connor,jeff-connor,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,6,1,7
+2026-2027,regular,2026-09-24,Lewis Hilsenteger,lewis-hilsenteger,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,1,5,6
+2026-2027,regular,2026-09-24,William Kim,william-kim,Grizzlies,https://ormrhl.com/wp-content/uploads/2022/09/grizzlies-128x128.png,#fc2803,0,0,0
+2026-2027,regular,2026-09-24,Peter MacDonnel,peter-macdonnel,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,0,1,1
+2026-2027,regular,2026-09-24,Dillon Vijan,dillon-vijan,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,0,0,0
+2026-2027,regular,2026-09-24,Robert Doswell,robert-doswell,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,0,0,0
+2026-2027,regular,2026-09-24,Vince Valvala,vince-valvala,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,1,1,2
+2026-2027,regular,2026-09-24,Jonathan Mok,jonathan-mok,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,0,1,1
+2026-2027,regular,2026-09-24,Connor Swales,connor-swales,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,0,2,2
+2026-2027,regular,2026-09-24,Matt Charles,matt-charles,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,1,2,3
+2026-2027,regular,2026-09-24,Daniel Hashimoto,daniel-hashimoto,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,1,2,3
+2026-2027,regular,2026-09-24,Jonathon De Luca,jonathon-de-luca,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,0,3,3
+2026-2027,regular,2026-09-24,Stefan Saragosa,stefan-saragosa,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,0,1,1
+2026-2027,regular,2026-09-24,Dylan Wasser,dylan-wasser,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,6,0,6
+2026-2027,regular,2026-09-24,Alex Lupke,alex-lupke,Leafs,https://ormrhl.com/wp-content/uploads/2025/09/leafsfin-128x128.png,#99afff,1,1,2
